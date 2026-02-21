@@ -84,7 +84,7 @@ questions = [
   "How many songs is Graham Coxon on, including his work with Blur?",
   "What are the two most popular songs?",
   "Which album has the most total plays?",
-  "Which artist wrote 'Mirrorball'?",
+  "Which artist wrote 'Mirror Ball'?",
   "Which artists do not feature on any other artist's songs?"
 ]
 
@@ -96,7 +96,7 @@ def sanitizeForJustSql(value):
     value = value.split(gptStartSqlMarker, 1)[1]
     newlineIndex = value.find("\n")
     if newlineIndex != -1:
-      value = value[newlineIndex+1]
+      value = value[newlineIndex+1:]
   if gptEndSqlMarker in value:
     value = value.split(gptEndSqlMarker, 1)[0]
   
@@ -125,7 +125,7 @@ for strategy in strategies:
       print("Query Raw Response:")
       print(queryRawResponse)
 
-      friendlyResultsPrompt = "I asked this question: \""+question+ "\"from this database: \""+setupSqlDbScript+"\"and got this response: \""+queryRawResponse+"\"Please say what this data is in everyday speech. Don't give any suggestions or follow-up chatter."
+      friendlyResultsPrompt = "I asked this question: \""+question+ "\"from this database: \""+setupSqlDbScript+"\"and got this response: \""+queryRawResponse+"\"Please tell me this data in everyday speech. Don't give any suggestions or follow-up chatter."
       friendlyResponse = getChatGptResponse(friendlyResultsPrompt)
       print("Friendly Response:")
       print(friendlyResponse)
@@ -135,9 +135,17 @@ for strategy in strategies:
       error = str(err)
       print(err)
 
+    questionResults.append({
+      "question": question,
+      "sql": sqlSyntaxResponse,
+      "queryRawResponse": queryRawResponse,
+      "friendlyResponse": friendlyResponse,
+      "error": error
+    })
+
   responses["questionResults"] = questionResults
 
-  with open(getPath(f"response_{strategy}_{time()}.json"), w) as outFile:
+  with open(getPath(f"response_{strategy}_{time()}.json"), "w") as outFile:
     json.dump(responses, outFile, indent=2)
 
 

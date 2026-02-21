@@ -1,0 +1,55 @@
+{
+  "strategy": "single_domain_double_shot",
+  "prompt_prefix": "\nCREATE TABLE Song (\n  songId INT AUTO_INCREMENT,\n  songName VARCHAR(60) NOT NULL,\n  songLengthSecs INT NOT NULL,\n  genre VARCHAR(60) NOT NULL,\n  numStreams BIGINT NOT NULL,\n  PRIMARY KEY (songId)\n);\n\nCREATE TABLE Artist (\n  artistId INT AUTO_INCREMENT,\n  artistName VARCHAR(60) NOT NULL,\n  PRIMARY KEY (artistId)\n);\n\nCREATE TABLE ArtistSong(\n  songId INT NOT NULL,\n  artistId INT NOT NULL,\n  isFeatured BOOLEAN NOT NULL,\n  PRIMARY KEY (songId, artistId),\n  FOREIGN KEY (songId) REFERENCES Song(songId)\n    ON DELETE CASCADE,\n  FOREIGN KEY (artistId) REFERENCES Artist(artistId)\n    ON DELETE CASCADE\n);\n\nCREATE TABLE Album (\n  albumId INT AUTO_INCREMENT,\n  albumName VARCHAR(60) NOT NULL,\n  artistId INT NOT NULL,\n  albumLength INT NOT NULL,\n  releaseDate DATE,\n  PRIMARY KEY (albumId),\n  FOREIGN KEY (artistId) REFERENCES Artist(artistId)\n    ON DELETE CASCADE\n);\n\nCREATE TABLE AlbumSong(\n  songId INT NOT NULL,\n  albumId INT NOT NULL,\n  trackNum INT NOT NULL,\n  PRIMARY KEY (songId, albumId),\n  FOREIGN KEY (songId) REFERENCES Song(songId)\n    ON DELETE CASCADE,\n  FOREIGN KEY (albumId) REFERENCES Album(albumId)\n    ON DELETE CASCADE\n);\n\nCREATE TABLE BAND(\n  bandId INT AUTO_INCREMENT,\n  startDate DATE NOT NULL,\n  endDate DATE,\n  PRIMARY KEY (bandId),\n  FOREIGN KEY (bandId) REFERENCES Artist(artistId)\n    ON DELETE CASCADE\n);\n\nCREATE TABLE BandMember(\n  artistId INT NOT NULL,\n  bandId INT NOT NULL,\n  bandName VARCHAR(60),\n  PRIMARY KEY (artistId, bandId),\n  FOREIGN KEY (artistId) REFERENCES Artist(artistId)\n    ON DELETE CASCADE,\n  FOREIGN KEY (bandId) REFERENCES Band(bandId)\n    ON DELETE CASCADE\n);\n\n\n\n\nWhich artists are never features on songs from other artists? \nSELECT a.artistName\nFROM Artist INNER JOIN ArtistSong as ON a.artistId = as.artistId\n;Give me a sqlite statement that answers my question. Only respond with sqlite syntax. If there is an error, do not explain it or comment on it.",
+  "questionResults": [
+    {
+      "question": "Which artist features the most songs that are not their own?",
+      "sql": "SELECT a.artistName\nFROM Artist a\nWHERE a.artistId NOT IN (\n    SELECT asub.artistId\n    FROM ArtistSong asub\n    WHERE asub.isFeatured = 1 AND asub.artistId <> (\n        SELECT asub2.artistId\n        FROM AlbumSong als\n        JOIN Album al ON als.albumId = al.albumId\n        JOIN ArtistSong asub2 ON als.songId = asub2.songId\n        WHERE asub.artistId = asub2.artistId\n    )\n);",
+      "queryRawResponse": "[('Gorillaz',), ('Blur',), ('Graham Coxon',), ('De La Soul',), ('Tom Misch',), ('Little Dragon',), ('Djo',), ('Damon Albarn',), ('Alex James',), ('Dave Rowntree',), ('Posdnuos',), ('Trugoy the Dove',), ('Pasemaster Mase',), ('Yukimi Nagano',), ('Erik Bodin',), ('Hakan Wirenstrand',), ('Fredrik Wallin',)]",
+      "friendlyResponse": "The response you received lists artists who are featured the most in songs that aren't their own. Here are the names:\n\n1. Gorillaz\n2. Blur\n3. Graham Coxon\n4. De La Soul\n5. Tom Misch\n6. Little Dragon\n7. Djo\n8. Damon Albarn\n9. Alex James\n10. Dave Rowntree\n11. Posdnuos\n12. Trugoy the Dove\n13. Pasemaster Mase\n14. Yukimi Nagano\n15. Erik Bodin\n16. Hakan Wirenstrand\n17. Fredrik Wallin",
+      "error": "None"
+    },
+    {
+      "question": "What different genres of songs are there?",
+      "sql": "SELECT DISTINCT genre\nFROM Song;",
+      "queryRawResponse": "[('Alternative Hip Hop',), ('Indie Electronic',), ('Electronic Hip Hop',), ('Synth-Pop',), ('Art Pop',), ('Indie Rock',), ('Britpop',), ('Alternative Rock',), ('Post-Britpop',), ('Folk Rock',), ('Post-Punk',), ('Hip Hop',), ('Neo-Soul',), ('Jazz-Funk',), ('Electropop',), ('Psychedelic Rock',)]",
+      "friendlyResponse": "The database includes a variety of music genres such as Alternative Hip Hop, Indie Electronic, Electronic Hip Hop, Synth-Pop, Art Pop, Indie Rock, Britpop, Alternative Rock, Post-Britpop, Folk Rock, Post-Punk, Hip Hop, Neo-Soul, Jazz-Funk, Electropop, and Psychedelic Rock.",
+      "error": "None"
+    },
+    {
+      "question": "How many songs is Graham Coxon on, including his work with Blur?",
+      "sql": "SELECT a.artistName\nFROM Artist a\nWHERE a.artistId NOT IN (\n  SELECT asub.artistId \n  FROM ArtistSong asub \n  WHERE asub.isFeatured = 1\n);\n\nSELECT COUNT(*) \nFROM ArtistSong asub \nJOIN Artist a ON asub.artistId = a.artistId \nWHERE a.artistName = 'Graham Coxon';",
+      "queryRawResponse": "[('Alternative Hip Hop',), ('Indie Electronic',), ('Electronic Hip Hop',), ('Synth-Pop',), ('Art Pop',), ('Indie Rock',), ('Britpop',), ('Alternative Rock',), ('Post-Britpop',), ('Folk Rock',), ('Post-Punk',), ('Hip Hop',), ('Neo-Soul',), ('Jazz-Funk',), ('Electropop',), ('Psychedelic Rock',)]",
+      "friendlyResponse": "The database includes a variety of music genres such as Alternative Hip Hop, Indie Electronic, Electronic Hip Hop, Synth-Pop, Art Pop, Indie Rock, Britpop, Alternative Rock, Post-Britpop, Folk Rock, Post-Punk, Hip Hop, Neo-Soul, Jazz-Funk, Electropop, and Psychedelic Rock.",
+      "error": "You can only execute one statement at a time."
+    },
+    {
+      "question": "What are the two most popular songs?",
+      "sql": "SELECT artistName\nFROM Artist\nWHERE artistId NOT IN (\n    SELECT as1.artistId\n    FROM ArtistSong as1\n    INNER JOIN ArtistSong as2 ON as1.songId = as2.songId\n    WHERE as1.artistId != as2.artistId AND as1.isFeatured = 1\n);\n\nSELECT songName\nFROM Song\nORDER BY numStreams DESC\nLIMIT 2;",
+      "queryRawResponse": "[('Alternative Hip Hop',), ('Indie Electronic',), ('Electronic Hip Hop',), ('Synth-Pop',), ('Art Pop',), ('Indie Rock',), ('Britpop',), ('Alternative Rock',), ('Post-Britpop',), ('Folk Rock',), ('Post-Punk',), ('Hip Hop',), ('Neo-Soul',), ('Jazz-Funk',), ('Electropop',), ('Psychedelic Rock',)]",
+      "friendlyResponse": "The database includes a variety of music genres such as Alternative Hip Hop, Indie Electronic, Electronic Hip Hop, Synth-Pop, Art Pop, Indie Rock, Britpop, Alternative Rock, Post-Britpop, Folk Rock, Post-Punk, Hip Hop, Neo-Soul, Jazz-Funk, Electropop, and Psychedelic Rock.",
+      "error": "You can only execute one statement at a time."
+    },
+    {
+      "question": "Which album has the most total plays?",
+      "sql": "SELECT a.albumName\nFROM Album a\nJOIN AlbumSong als ON a.albumId = als.albumId\nJOIN Song s ON als.songId = s.songId\nGROUP BY a.albumId\nORDER BY SUM(s.numStreams) DESC\nLIMIT 1;",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "Your question about finding the album with the most total plays returned an empty result, which means there is no data available or matching records in the database for that query.",
+      "error": "None"
+    },
+    {
+      "question": "Which artist wrote 'Mirror Ball'?",
+      "sql": "SELECT a.artistName\nFROM Artist a\nWHERE a.artistId NOT IN (\n  SELECT as.artistId\n  FROM ArtistSong as\n  WHERE as.isFeatured = 1\n);\n\nSELECT a.artistName\nFROM Artist a\nJOIN ArtistSong asg ON a.artistId = asg.artistId\nJOIN Song s ON asg.songId = s.songId\nWHERE s.songName = 'Mirror Ball';",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "Your question about finding the album with the most total plays returned an empty result, which means there is no data available or matching records in the database for that query.",
+      "error": "near \"as\": syntax error"
+    },
+    {
+      "question": "Which artists do not feature on any other artist's songs?",
+      "sql": "SELECT a.artistName\nFROM Artist a\nWHERE a.artistId NOT IN (\n  SELECT asub.artistId\n  FROM ArtistSong asub\n  WHERE asub.isFeatured = 1\n);",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "In the music database you asked about, there are no artists who have never been featured on another artist's songs.",
+      "error": "None"
+    }
+  ]
+}
