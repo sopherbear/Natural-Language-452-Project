@@ -59,7 +59,7 @@ def getChatGptResponse(content):
     stream=True,
   )
 
-  # TODO: Review this portion of code
+
   responseList = []
   for chunk in stream:
     if chunk.choices[0].delta.content is not None:
@@ -72,7 +72,10 @@ def getChatGptResponse(content):
 commonSqlOnlyRequest = "Give me a sqlite statement that answers my question. Only respond with sqlite syntax. If there is an error, do not explain it or comment on it."
 strategies = {
   "zero-shot": setupSqlDbScript + commonSqlOnlyRequest,
-  # TODO: ADD A single_domain_double_shot example later
+  "single_domain_double_shot": (setupSqlDbScript+
+                                "Which artists are never features on songs from other artists?"+
+                                " \nSELECT a.artistName\nFROM Artist INNER JOIN ArtistSong as ON a.artistId = as.artistId\n;"+
+                                commonSqlOnlyRequest)
 }
 
 questions = [
@@ -81,11 +84,66 @@ questions = [
   "How many songs is Graham Coxon on, including his work with Blur?",
   "What are the two most popular songs?",
   "Which album has the most total plays?",
-  "Which artist wrote 'Mirrorball'?"
+  "Which artist wrote 'Mirrorball'?",
+  "Which artists do not feature on any other artist's songs?"
 ]
+
+
+def sanitizeForJustSql(value):
+  gptStartSqlMarker = "```"
+  gptEndSqlMarker = "```"
+  if gptStartSqlMarker in value:
+    value = value.split(gptStartSqlMarker, 1)[1]
+    newlineIndex = value.find("\n")
+    if newlineIndex != -1:
+      value = value[newlineIndex+1]
+  if gptEndSqlMarker in value:
+    value = value.split(gptEndSqlMarker, 1)[0]
+  
+  return value.strip()
+
+
+for strategy in strategies:
+  responses = {"strategy": strategy, "prompt_prefix": strategies[strategy]}
+  questionResults = []
+  print("########################################################################")
+  print(f"Running strategy: {strategy}")
+  for question in questions:
+
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("Question:")
+    print(question)
+    error = "None"
+
+    try:
+      getSqlfromQuestionEngineeredPrompt = strategies[strategy] + " " + question
+      sqlSyntaxResponse = getChatGptResponse(getSqlfromQuestionEngineeredPrompt)
+      sqlSyntaxResponse = sanitizeForJustSql(sqlSyntaxResponse)
+      print("SQL Syntax Response:")
+      print(sqlSyntaxResponse)
+      queryRawResponse = str(runSql(sqlSyntaxResponse))
+      print("Query Raw Response:")
+      print(queryRawResponse)
+
+      friendlyResultsPrompt = "I asked this question: \""+question+ "\"from this database: \""+setupSqlDbScript+"\"and got this response: \""+queryRawResponse+"\"Please say what this data is in everyday speech. Don't give any suggestions or follow-up chatter."
+      friendlyResponse = getChatGptResponse(friendlyResultsPrompt)
+      print("Friendly Response:")
+      print(friendlyResponse)
+
+
+    except Exception as err:
+      error = str(err)
+      print(err)
+
+  responses["questionResults"] = questionResults
+
+  with open(getPath(f"response_{strategy}_{time()}.json"), w) as outFile:
+    json.dump(responses, outFile, indent=2)
 
 
 
 
 sqlliteCursor.close()
+sqlliteCon.close()
+print("Done!")
   
